@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>متجر المنتجات</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef3f0;--card:#fff;--ink:#12302a;--mute:#5d7a72;--line:#d3dfd9;--accent:#0f6b57;--hot:#e2552b}
+@media(prefers-color-scheme:dark){:root{--bg:#0e1a17;--card:#16261f;--ink:#e6f1ec;--mute:#93b0a6;--line:#264238;--accent:#3fc7a3;--hot:#ff7a4d}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Tajawal,system-ui,sans-serif;line-height:1.6}
+header{display:flex;gap:10px;align-items:center;padding:14px 16px;position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--line);z-index:5}
+h1{font-size:1.3rem;font-weight:800;margin:0;flex:1}
+button,input,select,textarea{font:inherit;color:inherit}
+.btn{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:8px 14px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.danger{background:var(--hot)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--hot);outline-offset:2px}
+.tools{display:flex;gap:8px;padding:14px 16px;flex-wrap:wrap}
+input,select,textarea{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 12px;width:100%}
+.tools input{flex:1 1 180px;width:auto}.tools select{width:auto}
+main{padding:0 16px 40px;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+.pic{height:140px;display:grid;place-items:center;font-size:3.6rem;background:linear-gradient(135deg,var(--line),transparent)}
+.pic img{width:100%;height:100%;object-fit:cover}
+.body{padding:12px;display:flex;flex-direction:column;gap:4px;flex:1}
+.cat{color:var(--mute);font-size:.8rem}.name{font-weight:800}.desc{color:var(--mute);font-size:.9rem;flex:1}
+.price{font-weight:800;color:var(--accent);font-size:1.1rem}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px}
+.empty{grid-column:1/-1;text-align:center;color:var(--mute);padding:40px}
+.panel{position:fixed;inset:0 auto 0 0;width:min(400px,100%);background:var(--card);border-right:1px solid var(--line);transform:translateX(-102%);transition:transform .25s;z-index:20;display:flex;flex-direction:column;padding:16px;gap:10px;overflow:auto}
+.panel.open{transform:none}
+.panel h2{margin:0}
+.line{display:flex;gap:8px;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding:6px 0}
+.qty{display:flex;gap:6px;align-items:center}.qty button{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:none;cursor:pointer}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:12px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:30}
+#toast.on{opacity:1}
+.admin{padding:0 16px 16px}.admin form{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
+.orders{margin-top:12px;font-size:.9rem}
+</style>
+</head>
+<body>
+<header>
+  <h1>🛍️ متجر المنتجات</h1>
+  <button class="btn ghost" id="adminBtn">الإدارة</button>
+  <button class="btn" id="cartBtn">السلة (<span id="count">0</span>)</button>
+</header>
+
+<section class="admin" id="admin" hidden>
+  <form id="pForm">
+    <input name="name" placeholder="اسم المنتج" required>
+    <input name="price" type="number" min="0" step="any" placeholder="السعر" required>
+    <input name="category" placeholder="القسم">
+    <input name="stock" type="number" min="0" placeholder="الكمية">
+    <input name="emoji" placeholder="إيموجي 📦" maxlength="2">
+    <input name="image" placeholder="رابط صورة (اختياري)">
+    <input name="desc" placeholder="الوصف">
+    <button class="btn">إضافة المنتج</button>
+  </form>
+  <button class="btn ghost orders-btn" id="ordersBtn" style="margin-top:8px">عرض الطلبات</button>
+  <div class="orders" id="orders"></div>
+</section>
+
+<div class="tools">
+  <input id="q" type="search" placeholder="دوّر على منتج...">
+  <select id="cat"><option value="">كل الأقسام</option></select>
+</div>
+<main id="grid"></main>
+
+<aside class="panel" id="cart" aria-label="السلة">
+  <div class="row"><h2>سلتك</h2><button class="btn ghost" id="closeCart">إغلاق</button></div>
+  <div id="lines"></div>
+  <strong>الإجمالي: <span id="total">0</span> ج.م</strong>
+  <input id="cName" placeholder="الاسم">
+  <input id="cPhone" type="tel" placeholder="رقم الموبايل">
+  <textarea id="cAddr" rows="2" placeholder="العنوان"></textarea>
+  <button class="btn" id="order">تأكيد الطلب</button>
+</aside>
+<div id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let products = [], cart = JSON.parse(localStorage.getItem('cart') || '[]'), token = sessionStorage.getItem('token');
+
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2500)}
+async function api(url, opts = {}) {
+  const r = await fetch(url, { ...opts, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) } });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error || 'حصل خطأ');
+  return d;
+}
+
+let isStatic = false;
+async function getAll() {
+  if (!isStatic) { try { return await api('/api/products'); } catch { isStatic = true; $('#adminBtn').hidden = true; } }
+  return (await fetch('products.json')).json();
+}
+async function load() {
+  const all = await getAll(), q = $('#q').value.toLowerCase(), c = $('#cat').value;
+  products = all.filter(p => (!q || (p.name + p.desc).toLowerCase().includes(q)) && (!c || p.category === c));
+  render();
+}
+async function loadCats() {
+  const all = await getAll(), cur = $('#cat').value;
+  $('#cat').innerHTML = '<option value="">كل الأقسام</option>' + [...new Set(all.map(p => p.category))].map(c => `<option ${c===cur?'selected':''}>${esc(c)}</option>`).join('');
+}
+
+function render() {
+  $('#grid').innerHTML = products.length ? products.map(p => `
+    <article class="card">
+      <div class="pic">${p.image ? `<img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy">` : esc(p.emoji)}</div>
+      <div class="body">
+        <span class="cat">${esc(p.category)}</span>
+        <span class="name">${esc(p.name)}</span>
+        <span class="desc">${esc(p.desc)}</span>
+        <div class="row"><span class="price">${p.price} ج.م</span>
+          ${p.stock > 0 ? `<button class="btn" data-add="${p.id}">أضف للسلة</button>` : '<span class="cat">نفد المخزون</span>'}</div>
+        ${token ? `<button class="btn danger" data-del="${p.id}">حذف</button>` : ''}
+      </div>
+    </article>`).join('') : '<p class="empty">مفيش منتجات مطابقة.</p>';
+}
+
+function saveCart(){localStorage.setItem('cart',JSON.stringify(cart));renderCart()}
+function renderCart() {
+  $('#count').textContent = cart.reduce((s, i) => s + i.qty, 0);
+  let total = 0;
+  $('#lines').innerHTML = cart.length ? cart.map(i => { total += i.price * i.qty; return `
+    <div class="line"><span>${esc(i.name)}<br><small>${i.price} ج.م</small></span>
+    <span class="qty"><button data-dec="${i.id}">−</button>${i.qty}<button data-inc="${i.id}">+</button></span></div>`; }).join('')
+    : '<p class="empty">السلة فاضية. أضف منتج من القائمة.</p>';
+  $('#total').textContent = total;
+}
+
+document.addEventListener('click', async e => {
+  const t = e.target;
+  try {
+    if (t.dataset.add) {
+      const p = products.find(x => x.id == t.dataset.add), c = cart.find(x => x.id == p.id);
+      if (c) { if (c.qty < p.stock) c.qty++; else return toast('وصلت لأقصى كمية متاحة'); }
+      else cart.push({ id: p.id, name: p.name, price: p.price, qty: 1 });
+      saveCart(); toast('اتضاف للسلة');
+    }
+    if (t.dataset.inc) { cart.find(x => x.id == t.dataset.inc).qty++; saveCart(); }
+    if (t.dataset.dec) { const c = cart.find(x => x.id == t.dataset.dec); if (--c.qty < 1) cart = cart.filter(x => x !== c); saveCart(); }
+    if (t.dataset.del && confirm('متأكد إنك عايز تحذف المنتج؟')) { await api('/api/products/' + t.dataset.del, { method: 'DELETE' }); await loadCats(); load(); }
+  } catch (err) { toast(err.message); }
+});
+
+$('#cartBtn').onclick = () => $('#cart').classList.add('open');
+$('#closeCart').onclick = () => $('#cart').classList.remove('open');
+$('#q').oninput = () => { clearTimeout(window._t); window._t = setTimeout(load, 250); };
+$('#cat').onchange = load;
+
+const MAIL = 'assadwael40@gmail.com';
+$('#order').onclick = async () => {
+  const name = $('#cName').value.trim(), phone = $('#cPhone').value.trim(), address = $('#cAddr').value.trim();
+  try {
+    if (isStatic) {
+      if (!name || !phone || !address || !cart.length) throw new Error('كمّل بيانات الطلب');
+      const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+      const r = await fetch('https://formsubmit.co/ajax/' + MAIL, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ _subject: 'طلب جديد من ' + name, الاسم: name, الموبايل: phone, العنوان: address,
+          الطلب: cart.map(i => `${i.name} × ${i.qty} = ${i.price * i.qty} ج.م`).join(' | '), الإجمالي: total + ' ج.م' })
+      });
+      if (!r.ok) throw new Error('تعذر إرسال الطلب، جرّب تاني');
+      cart = []; saveCart(); $('#cart').classList.remove('open'); return toast('تم إرسال طلبك بنجاح، هنتواصل معاك قريب');
+    }
+    const r = await api('/api/orders', { method: 'POST', body: JSON.stringify({ name, phone, address, items: cart }) });
+    cart = []; saveCart(); $('#cart').classList.remove('open');
+    toast(`تم الطلب رقم ${r.id} — الإجمالي ${r.total} ج.م`); load();
+  } catch (err) { toast(err.message); }
+};
+
+$('#adminBtn').onclick = async () => {
+  if (!token) {
+    const password = prompt('كلمة مرور الإدارة:');
+    if (!password) return;
+    try { token = (await api('/api/login', { method: 'POST', body: JSON.stringify({ password }) })).token; sessionStorage.setItem('token', token); }
+    catch (err) { return toast(err.message); }
+  }
+  $('#admin').hidden = !$('#admin').hidden; render();
+};
+
+$('#pForm').onsubmit = async e => {
+  e.preventDefault();
+  try {
+    await api('/api/products', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(e.target))) });
+    e.target.reset(); toast('اتضاف المنتج'); await loadCats(); load();
+  } catch (err) { toast(err.message); }
+};
+
+$('#ordersBtn').onclick = async () => {
+  try {
+    const o = await api('/api/orders');
+    $('#orders').innerHTML = o.length ? o.map(x => `<div class="line"><span>#${x.id} — ${esc(x.name)} (${esc(x.phone)})<br><small>${esc(x.address)}</small></span><strong>${x.total} ج.م</strong></div>`).join('') : 'مفيش طلبات لسه.';
+  } catch (err) { toast(err.message); }
+};
+
+if (token) $('#admin').hidden = false;
+renderCart(); loadCats(); load();
+</script>
+</body>
+</html>
